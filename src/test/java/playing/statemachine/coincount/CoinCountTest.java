@@ -62,4 +62,16 @@ public class CoinCountTest {
         assertEquals(1, process._2.exitInitialStateCount);
         assertEquals(1, process._2.enterCountStateCount);
     }
+
+    @Test
+    public void when_in_INITIAL_state_given_events_MIRACLE_HEAD_HEAD_TAILS_MIRACLE_should_move_into_FINAL_state_with_correct_counts() throws Exception {
+        final Tuple<State, RuntimeState> startState = stateMachine.start(new RuntimeState());
+        final Tuple<State, RuntimeState> process = stateMachine.process(startState, MIRACLE, HEADS, HEADS, TAILS, MIRACLE);
+
+        assertEquals(FINAL, process._1);
+        assertEquals(2, process._2.heads);
+        assertEquals(1, process._2.tails);
+        assertEquals(1, process._2.exitInitialStateCount);
+        assertEquals(4, process._2.enterCountStateCount);
+    }
 }
