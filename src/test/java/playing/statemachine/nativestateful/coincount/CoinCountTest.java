@@ -1,20 +1,20 @@
-package playing.statemachine.coincount;
+package playing.statemachine.nativestateful.coincount;
 
 import org.junit.Before;
 import org.junit.Test;
-import playing.statemachine.StateMachine;
+import playing.statemachine.nativestateful.StateMachine;
 import playing.util.Tuple;
 
 import static org.junit.Assert.assertEquals;
-import static playing.statemachine.coincount.Event.*;
-import static playing.statemachine.coincount.State.*;
+import static playing.statemachine.nativestateful.coincount.Event.*;
+import static playing.statemachine.nativestateful.coincount.State.*;
 
 public class CoinCountTest {
     private StateMachine<State, Event, RuntimeState> stateMachine;
 
     @Before
     public void before() {
-        stateMachine = new StateMachine.StateMachineBuilder<State, Event, RuntimeState>()
+        stateMachine = new StateMachine.Builder<State, Event, RuntimeState>()
                 .initialState(INITIAL)
                 .onState(INITIAL, s -> s
                         .onEvent(MIRACLE).changeTo(COUNT).noAction()

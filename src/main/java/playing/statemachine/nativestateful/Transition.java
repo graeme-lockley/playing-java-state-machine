@@ -1,4 +1,4 @@
-package playing.statemachine;
+package playing.statemachine.nativestateful;
 
 class Transition<STATE, EVENT, RS> {
     public final STATE fromState;

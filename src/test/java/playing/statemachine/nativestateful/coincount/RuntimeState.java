@@ -1,4 +1,4 @@
-package playing.statemachine.coincount;
+package playing.statemachine.nativestateful.coincount;
 
 class RuntimeState {
     final int heads;

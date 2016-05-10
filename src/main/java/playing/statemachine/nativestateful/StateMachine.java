@@ -1,4 +1,4 @@
-package playing.statemachine;
+package playing.statemachine.nativestateful;
 
 import playing.util.Tuple;
 
@@ -50,18 +50,18 @@ public class StateMachine<STATE, EVENT, RS> {
         return transitions.stream().filter(t -> t.fromState == state && t.event == event).findFirst();
     }
 
-    public static class StateMachineBuilder<STATE, EVENT, RS> {
+    public static class Builder<STATE, EVENT, RS> {
         private STATE initialState;
         private final List<Transition<STATE, EVENT, RS>> transitions = new ArrayList<>();
         private final Map<STATE, Action<RS>> onEntryActions = new HashMap<>();
         private final Map<STATE, Action<RS>> onExitActions = new HashMap<>();
 
-        public StateMachineBuilder<STATE, EVENT, RS> initialState(STATE initialState) {
+        public Builder<STATE, EVENT, RS> initialState(STATE initialState) {
             this.initialState = initialState;
             return this;
         }
 
-        public StateMachineBuilder<STATE, EVENT, RS> onState(STATE state, Function<OnStateBuilder<STATE, EVENT, RS>, OnStateBuilder<STATE, EVENT, RS>> onStateBuilderFunction) {
+        public Builder<STATE, EVENT, RS> onState(STATE state, Function<OnStateBuilder<STATE, EVENT, RS>, OnStateBuilder<STATE, EVENT, RS>> onStateBuilderFunction) {
             OnStateBuilder<STATE, EVENT, RS> onStateBuilder = onStateBuilderFunction.apply(new OnStateBuilder<>(this, state));
             return this;
         }
@@ -108,13 +108,13 @@ public class StateMachine<STATE, EVENT, RS> {
         }
 
         public static class OnStateBuilder<STATE, EVENT, RS> {
-            private final StateMachineBuilder<STATE, EVENT, RS> stateMachineBuilder;
+            private final Builder<STATE, EVENT, RS> builder;
             private final STATE state;
             private EVENT event;
 
 
-            private OnStateBuilder(StateMachineBuilder<STATE, EVENT, RS> stateMachineBuilder, STATE state) {
-                this.stateMachineBuilder = stateMachineBuilder;
+            private OnStateBuilder(Builder<STATE, EVENT, RS> builder, STATE state) {
+                this.builder = builder;
                 this.state = state;
             }
 
@@ -124,21 +124,21 @@ public class StateMachine<STATE, EVENT, RS> {
             }
 
             public OnStateBuilder<STATE, EVENT, RS> onExitAction(Action<RS> exitAction) {
-                stateMachineBuilder.addOnStateExitAction(state, exitAction);
+                builder.addOnStateExitAction(state, exitAction);
                 return this;
             }
 
             public OnStateBuilder<STATE, EVENT, RS> onEntryAction(Action<RS> entryAction) {
-                stateMachineBuilder.addOnStateEntryAction(state, entryAction);
+                builder.addOnStateEntryAction(state, entryAction);
                 return this;
             }
 
             private void addAction(STATE toState, Action<RS> action) {
-                stateMachineBuilder.addTransition(state, event, toState == null ? state : toState, action);
+                builder.addTransition(state, event, toState == null ? state : toState, action);
             }
 
             private void addConsumer(STATE toState, Consumer<RS> consumer) {
-                stateMachineBuilder.addTransitionConsumer(state, event, toState == null ? state : toState, consumer);
+                builder.addTransitionConsumer(state, event, toState == null ? state : toState, consumer);
             }
         }
 

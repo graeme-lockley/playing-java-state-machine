@@ -1,4 +1,4 @@
-package playing.statemachine;
+package playing.statemachine.nativestateful;
 
 import java.util.Optional;
 
