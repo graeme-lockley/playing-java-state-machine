@@ -3,6 +3,7 @@ package playing.statemachine.classstateful;
 import playing.util.Tuple;
 
 import java.util.*;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -29,7 +30,7 @@ public class StateMachine<STATE, RS> {
         Tuple<STATE, RS> runningMachineState = machineState;
 
         for (Object event : events) {
-            final Optional<Transition<STATE, RS>> transitionOptional = findTransition(runningMachineState._1, event);
+            final Optional<Transition<STATE, RS>> transitionOptional = findTransition(runningMachineState._1, runningMachineState._2, event);
 
             if (transitionOptional.isPresent()) {
                 final Transition<STATE, RS> transition = transitionOptional.get();
@@ -48,8 +49,8 @@ public class StateMachine<STATE, RS> {
         return runningMachineState;
     }
 
-    private Optional<Transition<STATE, RS>> findTransition(STATE state, Object event) {
-        return transitions.stream().filter(t -> t.fromState == state && t.eventClass == event.getClass()).findFirst();
+    private Optional<Transition<STATE, RS>> findTransition(STATE state, RS runtimeState, Object event) {
+        return transitions.stream().filter(t -> t.canFire(state, runtimeState, event)).findFirst();
     }
 
     public static class Builder<STATE, RS> {
@@ -72,16 +73,16 @@ public class StateMachine<STATE, RS> {
             return new StateMachine<>(initialState, transitions, onEntryActions, onExitActions);
         }
 
-        private void addTransition(STATE fromState, Class eventClass, STATE toState) {
-            addTransition(fromState, eventClass, toState, (fromRuntimeState, event) -> fromRuntimeState);
+        private <EVENT> void addTransition(STATE fromState, Class eventClass, BiPredicate<RS, EVENT> condition, STATE toState) {
+            addTransition(fromState, eventClass, condition, toState, (fromRuntimeState, event) -> fromRuntimeState);
         }
 
-        private <EVENT> void addTransition(STATE fromState, Class eventClass, STATE toState, EventAction<EVENT, RS> action) {
-            transitions.add(new Transition<>(fromState, eventClass, toState, action));
+        private <EVENT> void addTransition(STATE fromState, Class eventClass, BiPredicate<RS, EVENT> condition, STATE toState, EventAction<EVENT, RS> action) {
+            transitions.add(new Transition<>(fromState, eventClass, condition, toState, action));
         }
 
-        private void addTransitionConsumer(STATE state, Class eventClass, STATE toState, Consumer<RS> consumer) {
-            addTransition(state, eventClass, toState, (fromRuntimeState, event) -> {
+        private <EVENT> void addTransitionConsumer(STATE state, Class eventClass, BiPredicate<RS, EVENT> condition, STATE toState, Consumer<RS> consumer) {
+            addTransition(state, eventClass, condition, toState, (fromRuntimeState, event) -> {
                 consumer.accept(fromRuntimeState);
                 return fromRuntimeState;
             });
@@ -135,22 +136,29 @@ public class StateMachine<STATE, RS> {
                 return this;
             }
 
-            private <EVENT> void addAction(STATE toState, EventAction<EVENT, RS> action) {
-                builder.addTransition(state, eventClass, toState == null ? state : toState, action);
+            private <EVENT> void addAction(BiPredicate<RS, EVENT> condition, STATE toState, EventAction<EVENT, RS> action) {
+                builder.addTransition(state, eventClass, condition, toState == null ? state : toState, action);
             }
 
-            private void addConsumer(STATE toState, Consumer<RS> consumer) {
-                builder.addTransitionConsumer(state, eventClass, toState == null ? state : toState, consumer);
+            private <EVENT> void addConsumer(BiPredicate<RS, EVENT> condition, STATE toState, Consumer<RS> consumer) {
+                builder.addTransitionConsumer(state, eventClass, condition, toState == null ? state : toState, consumer);
             }
         }
 
         public static class OnStateEventBuilder<STATE, EVENT, RS> {
             private final OnStateBuilder<STATE, RS> onStateBuilder;
             private STATE toState;
+            private BiPredicate<RS, EVENT> condition;
 
 
             private OnStateEventBuilder(OnStateBuilder<STATE, RS> onStateBuilder) {
                 this.onStateBuilder = onStateBuilder;
+                this.condition = (s, e) -> true;
+            }
+
+            public OnStateEventBuilder<STATE, EVENT, RS> condition(BiPredicate<RS, EVENT> condition) {
+                this.condition = condition;
+                return this;
             }
 
             public OnStateEventBuilder<STATE, EVENT, RS> changeTo(STATE toState) {
@@ -159,22 +167,22 @@ public class StateMachine<STATE, RS> {
             }
 
             public OnStateBuilder<STATE, RS> action(EventAction<EVENT, RS> action) {
-                onStateBuilder.addAction(toState, action);
+                onStateBuilder.addAction(condition, toState, action);
                 return onStateBuilder;
             }
 
             public OnStateBuilder<STATE, RS> noAction() {
-                onStateBuilder.addAction(toState, (x, e) -> x);
+                onStateBuilder.addAction(condition, toState, (x, e) -> x);
                 return onStateBuilder;
             }
 
             public OnStateBuilder<STATE, RS> consumer(Consumer<RS> consumer) {
-                onStateBuilder.addConsumer(toState, consumer);
+                onStateBuilder.addConsumer(condition, toState, consumer);
                 return onStateBuilder;
             }
 
             public OnStateBuilder<STATE, RS> noConsumer() {
-                onStateBuilder.addAction(toState, (x, e) -> x);
+                onStateBuilder.addAction(condition, toState, (x, e) -> x);
                 return onStateBuilder;
             }
         }
