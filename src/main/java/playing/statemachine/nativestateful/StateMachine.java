@@ -62,7 +62,7 @@ public class StateMachine<STATE, EVENT, RS> {
         }
 
         public Builder<STATE, EVENT, RS> onState(STATE state, Function<OnStateBuilder<STATE, EVENT, RS>, OnStateBuilder<STATE, EVENT, RS>> onStateBuilderFunction) {
-            OnStateBuilder<STATE, EVENT, RS> onStateBuilder = onStateBuilderFunction.apply(new OnStateBuilder<>(this, state));
+            onStateBuilderFunction.apply(new OnStateBuilder<>(this, state));
             return this;
         }
 
