@@ -37,7 +37,7 @@ The following names each kind of state machine and provides the name of the buil
 the construction of the builder:
 
 | Name | Description | Builder |
---------------------------------
+|------|-------------|---------|
 | NativeStatelessStateMachine | Events are native types or an enum type with the state machine having no bespoke state. | playing.statemachine.nativestateless.StateMachine.Builder<STATE, EVENT> |
 | NativeStatefulStateMachine | Events are native types or an enum type with the state machine supporting a bespoke state. | playing.statemachine.nativestateful.StateMachine.Builder<STATE, EVENT, RS> |
 | ClassStatelessStateMachine | Events are stateful with the state machine having no bespoke state. | playing.statemachine.classstateless.StateMachine.Builder<STATE> |
