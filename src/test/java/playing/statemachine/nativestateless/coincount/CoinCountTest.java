@@ -2,6 +2,7 @@ package playing.statemachine.nativestateless.coincount;
 
 import org.junit.Before;
 import org.junit.Test;
+import playing.statemachine.PlantUMLWriter;
 import playing.statemachine.nativestateless.StateMachine;
 
 import java.util.ArrayList;
@@ -33,6 +34,11 @@ public class CoinCountTest {
                 .onState(FINAL, s -> s
                         .onEntryAction(() -> trace.add("EntryAction: FINAL")))
                 .build();
+    }
+
+    @Test
+    public void should_write_out_the_PlantUML_statemachine_description() throws Exception {
+        PlantUMLWriter.write(stateMachine, "target/nativestateless_coincount.puml", 600);
     }
 
     @Test

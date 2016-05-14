@@ -2,6 +2,7 @@ package playing.statemachine.nativestateful.coincount;
 
 import org.junit.Before;
 import org.junit.Test;
+import playing.statemachine.PlantUMLWriter;
 import playing.statemachine.nativestateful.StateMachine;
 import playing.util.Tuple;
 
@@ -25,6 +26,11 @@ public class CoinCountTest {
                         .onEvent(TAILS).action(RuntimeState::incTails)
                         .onEvent(MIRACLE).changeTo(FINAL).noAction())
                 .build();
+    }
+
+    @Test
+    public void should_write_out_the_PlantUML_statemachine_description() throws Exception {
+        PlantUMLWriter.write(stateMachine, "target/nativestateful_coincount.puml", 600);
     }
 
     @Test

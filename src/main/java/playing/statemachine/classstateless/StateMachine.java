@@ -1,10 +1,14 @@
 package playing.statemachine.classstateless;
 
+import playing.statemachine.StateMachineTransition;
+import playing.statemachine.StateMachineWriter;
+
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
-public class StateMachine<STATE> {
+public class StateMachine<STATE> implements StateMachineWriter<STATE, String> {
     private static final StatelessAction STATELESS_ACTION = () -> {
     };
 
@@ -32,15 +36,15 @@ public class StateMachine<STATE> {
 
             if (transitionOptional.isPresent()) {
                 final Transition<STATE> transition = transitionOptional.get();
-                final StatelessAction onExitAction = onExitActions.getOrDefault(transition.fromState, STATELESS_ACTION);
-                final StatelessAction onEntryAction = onEntryActions.getOrDefault(transition.toState, STATELESS_ACTION);
+                final StatelessAction onExitAction = onExitActions.getOrDefault(transition.fromState(), STATELESS_ACTION);
+                final StatelessAction onEntryAction = onEntryActions.getOrDefault(transition.toState(), STATELESS_ACTION);
                 final EventStatelessAction<Object> eventStatelessAction = (EventStatelessAction<Object>) transition.action;
 
                 onExitAction.accept();
                 eventStatelessAction.apply(event);
                 onEntryAction.accept();
 
-                runningMachineState = transition.toState;
+                runningMachineState = transition.toState();
             }
         }
 
@@ -49,6 +53,16 @@ public class StateMachine<STATE> {
 
     private Optional<Transition<STATE>> findTransition(STATE state, Object event) {
         return transitions.stream().filter(t -> t.canFire(state, event)).findFirst();
+    }
+
+    @Override
+    public STATE initialState() {
+        return initialState;
+    }
+
+    @Override
+    public Iterable<StateMachineTransition<STATE, String>> transitions() {
+        return transitions.stream().collect(Collectors.toList());
     }
 
     public static class Builder<STATE> {

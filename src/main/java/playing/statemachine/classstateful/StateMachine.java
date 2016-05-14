@@ -1,13 +1,16 @@
 package playing.statemachine.classstateful;
 
+import playing.statemachine.StateMachineTransition;
+import playing.statemachine.StateMachineWriter;
 import playing.util.Tuple;
 
 import java.util.*;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
-public class StateMachine<STATE, RS> {
+public class StateMachine<STATE, RS> implements StateMachineWriter<STATE, String> {
     private final STATE initialState;
     private final List<Transition<STATE, RS>> transitions;
     private final Map<STATE, Action<RS>> onEntryActions;
@@ -34,11 +37,11 @@ public class StateMachine<STATE, RS> {
 
             if (transitionOptional.isPresent()) {
                 final Transition<STATE, RS> transition = transitionOptional.get();
-                final Action<RS> onExitAction = onExitActions.getOrDefault(transition.fromState, IDENTITY);
-                final Action<RS> onEntryAction = onEntryActions.getOrDefault(transition.toState, IDENTITY);
+                final Action<RS> onExitAction = onExitActions.getOrDefault(transition.fromState(), IDENTITY);
+                final Action<RS> onEntryAction = onEntryActions.getOrDefault(transition.toState(), IDENTITY);
                 final EventAction<Object, RS> eventAction = (EventAction<Object, RS>) transition.action;
 
-                runningMachineState = new Tuple<>(transition.toState,
+                runningMachineState = new Tuple<>(transition.toState(),
                         onEntryAction.apply(
                                 eventAction.apply(
                                         onExitAction.apply(runningMachineState._2),
@@ -51,6 +54,16 @@ public class StateMachine<STATE, RS> {
 
     private Optional<Transition<STATE, RS>> findTransition(STATE state, RS runtimeState, Object event) {
         return transitions.stream().filter(t -> t.canFire(state, runtimeState, event)).findFirst();
+    }
+
+    @Override
+    public STATE initialState() {
+        return initialState;
+    }
+
+    @Override
+    public Iterable<StateMachineTransition<STATE, String>> transitions() {
+        return transitions.stream().collect(Collectors.toList());
     }
 
     public static class Builder<STATE, RS> {

@@ -2,6 +2,7 @@ package playing.statemachine.classstateless.coincount;
 
 import org.junit.Before;
 import org.junit.Test;
+import playing.statemachine.PlantUMLWriter;
 import playing.statemachine.classstateless.StateMachine;
 
 import java.util.ArrayList;
@@ -33,6 +34,11 @@ public class CoinCountTest {
                         .onEntryAction(() -> trace.add("EntryAction: FINAL"))
                 )
                 .build();
+    }
+
+    @Test
+    public void should_write_out_the_PlantUML_statemachine_description() throws Exception {
+        PlantUMLWriter.write(stateMachine, "target/classstateless_coincount.puml", 600);
     }
 
     @Test

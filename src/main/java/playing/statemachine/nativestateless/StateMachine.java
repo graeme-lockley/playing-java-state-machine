@@ -1,9 +1,13 @@
 package playing.statemachine.nativestateless;
 
+import playing.statemachine.StateMachineTransition;
+import playing.statemachine.StateMachineWriter;
+
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
-public class StateMachine<STATE, EVENT> {
+public class StateMachine<STATE, EVENT> implements StateMachineWriter<STATE, EVENT> {
     private final STATE initialState;
     private final List<Transition<STATE, EVENT>> transitions;
     private final Map<STATE, StatelessAction> onEntryActions;
@@ -31,14 +35,14 @@ public class StateMachine<STATE, EVENT> {
 
             if (transitionOptional.isPresent()) {
                 final Transition<STATE, EVENT> transition = transitionOptional.get();
-                final StatelessAction onExitAction = onExitActions.getOrDefault(transition.fromState, IDENTITY);
-                final StatelessAction onEntryAction = onEntryActions.getOrDefault(transition.toState, IDENTITY);
+                final StatelessAction onExitAction = onExitActions.getOrDefault(transition.fromState(), IDENTITY);
+                final StatelessAction onEntryAction = onEntryActions.getOrDefault(transition.toState(), IDENTITY);
 
                 onExitAction.accept();
-                transition.action.accept();
+                transition.actionAccept();
                 onEntryAction.accept();
 
-                runningMachineState = transition.toState;
+                runningMachineState = transition.toState();
             }
         }
 
@@ -46,7 +50,17 @@ public class StateMachine<STATE, EVENT> {
     }
 
     private Optional<Transition<STATE, EVENT>> findTransition(STATE state, EVENT event) {
-        return transitions.stream().filter(t -> t.fromState.equals(state) && t.event.equals(event)).findFirst();
+        return transitions.stream().filter(t -> t.canFire(state, event)).findFirst();
+    }
+
+    @Override
+    public STATE initialState() {
+        return initialState;
+    }
+
+    @Override
+    public Collection<StateMachineTransition<STATE, EVENT>> transitions() {
+        return transitions.stream().collect(Collectors.toList());
     }
 
     public static class Builder<STATE, EVENT> {
