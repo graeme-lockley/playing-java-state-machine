@@ -1,5 +1,5 @@
 package playing.util;
 
-public interface ArgumentlessConsumer {
+public interface VoidConsumer {
     void accept();
 }

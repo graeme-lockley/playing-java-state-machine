@@ -2,7 +2,7 @@ package playing.statemachine.classstateless;
 
 import playing.statemachine.StateMachineTransition;
 import playing.statemachine.StateMachineWriter;
-import playing.util.ArgumentlessConsumer;
+import playing.util.VoidConsumer;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -11,15 +11,15 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class StateMachine<STATE> implements StateMachineWriter<STATE, String> {
-    private static final ArgumentlessConsumer STATELESS_ACTION = () -> {
+    private static final VoidConsumer STATELESS_ACTION = () -> {
     };
 
     private STATE initialState;
     private List<Transition<STATE>> transitions;
-    private Map<STATE, ArgumentlessConsumer> onEntryActions;
-    private Map<STATE, ArgumentlessConsumer> onExitActions;
+    private Map<STATE, VoidConsumer> onEntryActions;
+    private Map<STATE, VoidConsumer> onExitActions;
 
-    private StateMachine(STATE initialState, List<Transition<STATE>> transitions, Map<STATE, ArgumentlessConsumer> onEntryActions, Map<STATE, ArgumentlessConsumer> onExitActions) {
+    private StateMachine(STATE initialState, List<Transition<STATE>> transitions, Map<STATE, VoidConsumer> onEntryActions, Map<STATE, VoidConsumer> onExitActions) {
         this.initialState = initialState;
         this.transitions = transitions;
         this.onEntryActions = onEntryActions;
@@ -38,8 +38,8 @@ public class StateMachine<STATE> implements StateMachineWriter<STATE, String> {
 
             if (transitionOptional.isPresent()) {
                 final Transition<STATE> transition = transitionOptional.get();
-                final ArgumentlessConsumer onExitAction = onExitActions.getOrDefault(transition.fromState(), STATELESS_ACTION);
-                final ArgumentlessConsumer onEntryAction = onEntryActions.getOrDefault(transition.toState(), STATELESS_ACTION);
+                final VoidConsumer onExitAction = onExitActions.getOrDefault(transition.fromState(), STATELESS_ACTION);
+                final VoidConsumer onEntryAction = onEntryActions.getOrDefault(transition.toState(), STATELESS_ACTION);
 
                 onExitAction.accept();
                 transition.acceptAction(event);
@@ -69,8 +69,8 @@ public class StateMachine<STATE> implements StateMachineWriter<STATE, String> {
     public static class Builder<STATE> {
         private STATE initialState;
         private final List<Transition<STATE>> transitions = new ArrayList<>();
-        private final Map<STATE, ArgumentlessConsumer> onEntryActions = new HashMap<>();
-        private final Map<STATE, ArgumentlessConsumer> onExitActions = new HashMap<>();
+        private final Map<STATE, VoidConsumer> onEntryActions = new HashMap<>();
+        private final Map<STATE, VoidConsumer> onExitActions = new HashMap<>();
 
 
         public Builder<STATE> initialState(STATE initialState) {
@@ -92,11 +92,11 @@ public class StateMachine<STATE> implements StateMachineWriter<STATE, String> {
             transitions.add(new Transition<>(fromState, eventClass, condition, toState, action));
         }
 
-        private void addOnStateEntryAction(STATE state, ArgumentlessConsumer action) {
+        private void addOnStateEntryAction(STATE state, VoidConsumer action) {
             onEntryActions.put(state, action);
         }
 
-        private void addOnStateExitAction(STATE state, ArgumentlessConsumer action) {
+        private void addOnStateExitAction(STATE state, VoidConsumer action) {
             onExitActions.put(state, action);
         }
 
@@ -116,21 +116,21 @@ public class StateMachine<STATE> implements StateMachineWriter<STATE, String> {
                 return new OnStateEventBuilder<>(this);
             }
 
-            public OnStateBuilder<STATE> onExitAction(ArgumentlessConsumer exitAction) {
+            public OnStateBuilder<STATE> onExitAction(VoidConsumer exitAction) {
                 builder.addOnStateExitAction(state, exitAction);
                 return this;
             }
 
-            public OnStateBuilder<STATE> onExitConsumer(ArgumentlessConsumer exitConsumer) {
+            public OnStateBuilder<STATE> onExitConsumer(VoidConsumer exitConsumer) {
                 return onExitAction(exitConsumer);
             }
 
-            public OnStateBuilder<STATE> onEntryAction(ArgumentlessConsumer entryAction) {
+            public OnStateBuilder<STATE> onEntryAction(VoidConsumer entryAction) {
                 builder.addOnStateEntryAction(state, entryAction);
                 return this;
             }
 
-            public OnStateBuilder<STATE> onEntryConsumer(ArgumentlessConsumer entryConsumer) {
+            public OnStateBuilder<STATE> onEntryConsumer(VoidConsumer entryConsumer) {
                 return onEntryAction(entryConsumer);
             }
 

@@ -2,6 +2,7 @@ package playing.statemachine.nativestateless;
 
 import playing.statemachine.StateMachineTransition;
 import playing.statemachine.StateMachineWriter;
+import playing.util.VoidConsumer;
 
 import java.util.*;
 import java.util.function.Function;
@@ -10,13 +11,13 @@ import java.util.stream.Collectors;
 public class StateMachine<STATE, EVENT> implements StateMachineWriter<STATE, EVENT> {
     private final STATE initialState;
     private final List<Transition<STATE, EVENT>> transitions;
-    private final Map<STATE, StatelessAction> onEntryActions;
-    private final Map<STATE, StatelessAction> onExitActions;
+    private final Map<STATE, VoidConsumer> onEntryActions;
+    private final Map<STATE, VoidConsumer> onExitActions;
 
-    private final static StatelessAction IDENTITY = () -> {
+    private final static VoidConsumer IDENTITY = () -> {
     };
 
-    private StateMachine(STATE initialState, List<Transition<STATE, EVENT>> transitions, Map<STATE, StatelessAction> onEntryActions, Map<STATE, StatelessAction> onExitActions) {
+    private StateMachine(STATE initialState, List<Transition<STATE, EVENT>> transitions, Map<STATE, VoidConsumer> onEntryActions, Map<STATE, VoidConsumer> onExitActions) {
         this.initialState = initialState;
         this.transitions = transitions;
         this.onEntryActions = onEntryActions;
@@ -35,8 +36,8 @@ public class StateMachine<STATE, EVENT> implements StateMachineWriter<STATE, EVE
 
             if (transitionOptional.isPresent()) {
                 final Transition<STATE, EVENT> transition = transitionOptional.get();
-                final StatelessAction onExitAction = onExitActions.getOrDefault(transition.fromState(), IDENTITY);
-                final StatelessAction onEntryAction = onEntryActions.getOrDefault(transition.toState(), IDENTITY);
+                final VoidConsumer onExitAction = onExitActions.getOrDefault(transition.fromState(), IDENTITY);
+                final VoidConsumer onEntryAction = onEntryActions.getOrDefault(transition.toState(), IDENTITY);
 
                 onExitAction.accept();
                 transition.actionAccept();
@@ -66,8 +67,8 @@ public class StateMachine<STATE, EVENT> implements StateMachineWriter<STATE, EVE
     public static class Builder<STATE, EVENT> {
         private STATE initialState;
         private final List<Transition<STATE, EVENT>> transitions = new ArrayList<>();
-        private final Map<STATE, StatelessAction> onEntryActions = new HashMap<>();
-        private final Map<STATE, StatelessAction> onExitActions = new HashMap<>();
+        private final Map<STATE, VoidConsumer> onEntryActions = new HashMap<>();
+        private final Map<STATE, VoidConsumer> onExitActions = new HashMap<>();
 
         public Builder<STATE, EVENT> initialState(STATE initialState) {
             this.initialState = initialState;
@@ -83,16 +84,16 @@ public class StateMachine<STATE, EVENT> implements StateMachineWriter<STATE, EVE
             return new StateMachine<>(initialState, transitions, onEntryActions, onExitActions);
         }
 
-        private void addTransition(STATE fromState, EVENT event, STATE toState, StatelessAction action) {
+        private void addTransition(STATE fromState, EVENT event, STATE toState, VoidConsumer action) {
             transitions.add(new Transition<>(fromState, event, toState, action));
         }
 
-        private void addOnStateEntryAction(STATE state, StatelessAction action) {
+        private void addOnStateEntryAction(STATE state, VoidConsumer action) {
             onEntryActions.put(state, action);
         }
 
 
-        private void addOnStateExitAction(STATE state, StatelessAction action) {
+        private void addOnStateExitAction(STATE state, VoidConsumer action) {
             onExitActions.put(state, action);
         }
 
@@ -112,17 +113,26 @@ public class StateMachine<STATE, EVENT> implements StateMachineWriter<STATE, EVE
                 return new OnStateEventBuilder<>(this);
             }
 
-            public OnStateBuilder<STATE, EVENT> onExitAction(StatelessAction exitAction) {
+            public OnStateBuilder<STATE, EVENT> onExitAction(VoidConsumer exitAction) {
                 builder.addOnStateExitAction(state, exitAction);
                 return this;
             }
 
-            public OnStateBuilder<STATE, EVENT> onEntryAction(StatelessAction entryAction) {
+            public OnStateBuilder<STATE, EVENT> onExitConsumer(VoidConsumer exitConsumer) {
+                builder.addOnStateExitAction(state, exitConsumer);
+                return this;
+            }
+
+            public OnStateBuilder<STATE, EVENT> onEntryAction(VoidConsumer entryAction) {
                 builder.addOnStateEntryAction(state, entryAction);
                 return this;
             }
 
-            private void addAction(STATE toState, StatelessAction action) {
+            public OnStateBuilder<STATE, EVENT> onEntryConsumer(VoidConsumer entryConsumer) {
+                return onEntryAction(entryConsumer);
+            }
+
+            private void addAction(STATE toState, VoidConsumer action) {
                 builder.addTransition(state, event, toState == null ? state : toState, action);
             }
         }
@@ -141,7 +151,7 @@ public class StateMachine<STATE, EVENT> implements StateMachineWriter<STATE, EVE
                 return this;
             }
 
-            public OnStateBuilder<STATE, EVENT> action(StatelessAction action) {
+            public OnStateBuilder<STATE, EVENT> action(VoidConsumer action) {
                 onStateBuilder.addAction(toState, action);
                 return onStateBuilder;
             }
@@ -151,7 +161,7 @@ public class StateMachine<STATE, EVENT> implements StateMachineWriter<STATE, EVE
                 return onStateBuilder;
             }
 
-            public OnStateBuilder<STATE, EVENT> consumer(StatelessAction consumer) {
+            public OnStateBuilder<STATE, EVENT> consumer(VoidConsumer consumer) {
                 return action(consumer);
             }
 
