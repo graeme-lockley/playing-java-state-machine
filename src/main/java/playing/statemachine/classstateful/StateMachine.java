@@ -5,20 +5,18 @@ import playing.statemachine.StateMachineWriter;
 import playing.util.Tuple;
 
 import java.util.*;
-import java.util.function.BiPredicate;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.*;
 import java.util.stream.Collectors;
 
 public class StateMachine<STATE, RS> implements StateMachineWriter<STATE, String> {
     private final STATE initialState;
     private final List<Transition<STATE, RS>> transitions;
-    private final Map<STATE, Action<RS>> onEntryActions;
-    private final Map<STATE, Action<RS>> onExitActions;
+    private final Map<STATE, Function<RS, RS>> onEntryActions;
+    private final Map<STATE, Function<RS, RS>> onExitActions;
 
-    private final Action<RS> IDENTITY = x -> x;
+    private final Function<RS, RS> IDENTITY = x -> x;
 
-    private StateMachine(STATE initialState, List<Transition<STATE, RS>> transitions, Map<STATE, Action<RS>> onEntryActions, Map<STATE, Action<RS>> onExitActions) {
+    private StateMachine(STATE initialState, List<Transition<STATE, RS>> transitions, Map<STATE, Function<RS, RS>> onEntryActions, Map<STATE, Function<RS, RS>> onExitActions) {
         this.initialState = initialState;
         this.transitions = transitions;
         this.onEntryActions = onEntryActions;
@@ -37,13 +35,12 @@ public class StateMachine<STATE, RS> implements StateMachineWriter<STATE, String
 
             if (transitionOptional.isPresent()) {
                 final Transition<STATE, RS> transition = transitionOptional.get();
-                final Action<RS> onExitAction = onExitActions.getOrDefault(transition.fromState(), IDENTITY);
-                final Action<RS> onEntryAction = onEntryActions.getOrDefault(transition.toState(), IDENTITY);
-                final EventAction<Object, RS> eventAction = (EventAction<Object, RS>) transition.action;
+                final Function<RS, RS> onExitAction = onExitActions.getOrDefault(transition.fromState(), IDENTITY);
+                final Function<RS, RS> onEntryAction = onEntryActions.getOrDefault(transition.toState(), IDENTITY);
 
                 runningMachineState = new Tuple<>(transition.toState(),
                         onEntryAction.apply(
-                                eventAction.apply(
+                                transition.applyAction(
                                         onExitAction.apply(runningMachineState._2),
                                         event)));
             }
@@ -69,8 +66,8 @@ public class StateMachine<STATE, RS> implements StateMachineWriter<STATE, String
     public static class Builder<STATE, RS> {
         private STATE initialState;
         private final List<Transition<STATE, RS>> transitions = new ArrayList<>();
-        private final Map<STATE, Action<RS>> onEntryActions = new HashMap<>();
-        private final Map<STATE, Action<RS>> onExitActions = new HashMap<>();
+        private final Map<STATE, Function<RS, RS>> onEntryActions = new HashMap<>();
+        private final Map<STATE, Function<RS, RS>> onExitActions = new HashMap<>();
 
         public Builder<STATE, RS> initialState(STATE initialState) {
             this.initialState = initialState;
@@ -86,41 +83,23 @@ public class StateMachine<STATE, RS> implements StateMachineWriter<STATE, String
             return new StateMachine<>(initialState, transitions, onEntryActions, onExitActions);
         }
 
-        private <EVENT> void addTransition(STATE fromState, Class eventClass, BiPredicate<RS, EVENT> condition, STATE toState) {
-            addTransition(fromState, eventClass, condition, toState, (fromRuntimeState, event) -> fromRuntimeState);
-        }
-
-        private <EVENT> void addTransition(STATE fromState, Class eventClass, BiPredicate<RS, EVENT> condition, STATE toState, EventAction<EVENT, RS> action) {
+        private <EVENT> void addTransition(STATE fromState, Class eventClass, BiPredicate<RS, EVENT> condition, STATE toState, BiFunction<RS, EVENT, RS> action) {
             transitions.add(new Transition<>(fromState, eventClass, condition, toState, action));
         }
 
-        private <EVENT> void addTransitionConsumer(STATE state, Class eventClass, BiPredicate<RS, EVENT> condition, STATE toState, Consumer<RS> consumer) {
+        private <EVENT> void addTransitionConsumer(STATE state, Class eventClass, BiPredicate<RS, EVENT> condition, STATE toState, BiConsumer<RS, EVENT> consumer) {
             addTransition(state, eventClass, condition, toState, (fromRuntimeState, event) -> {
-                consumer.accept(fromRuntimeState);
+                consumer.accept(fromRuntimeState, event);
                 return fromRuntimeState;
             });
         }
 
-        private void addOnStateEntryAction(STATE state, Action<RS> action) {
+        private void addOnStateEntryAction(STATE state, Function<RS, RS> action) {
             onEntryActions.put(state, action);
         }
 
-        private void addOnStateEntryConsumer(STATE state, Consumer<RS> action) {
-            onEntryActions.put(state, runtimeState -> {
-                action.accept(runtimeState);
-                return runtimeState;
-            });
-        }
-
-        private void addOnStateExitAction(STATE state, Action<RS> action) {
+        private void addOnStateExitAction(STATE state, Function<RS, RS> action) {
             onExitActions.put(state, action);
-        }
-
-        private void addOnStateExitConsumer(STATE state, Consumer<RS> action) {
-            onExitActions.put(state, runtimeState -> {
-                action.accept(runtimeState);
-                return runtimeState;
-            });
         }
 
         public static class OnStateBuilder<STATE, RS> {
@@ -139,21 +118,39 @@ public class StateMachine<STATE, RS> implements StateMachineWriter<STATE, String
                 return new OnStateEventBuilder<>(this);
             }
 
-            public OnStateBuilder<STATE, RS> onExitAction(Action<RS> exitAction) {
+            public OnStateBuilder<STATE, RS> onExitAction(Function<RS, RS> exitAction) {
                 builder.addOnStateExitAction(state, exitAction);
                 return this;
             }
 
-            public OnStateBuilder<STATE, RS> onEntryAction(Action<RS> entryAction) {
-                builder.addOnStateEntryAction(state, entryAction);
+            public OnStateBuilder<STATE, RS> onExitConsumer(Consumer<RS> exitConsumer) {
+                builder.addOnStateExitAction(state, runtimeState -> {
+                    exitConsumer.accept(runtimeState);
+                    return runtimeState;
+                });
                 return this;
             }
 
-            private <EVENT> void addAction(BiPredicate<RS, EVENT> condition, STATE toState, EventAction<EVENT, RS> action) {
+            public OnStateBuilder<STATE, RS> onEntryAction(Function<RS, RS> entryAction) {
+                builder.addOnStateEntryAction(state, entryAction);
+                return this;
+
+            }
+
+            public OnStateBuilder<STATE, RS> onEntryConsumer(Consumer<RS> action) {
+                builder.addOnStateEntryAction(state, runtimeState -> {
+                    action.accept(runtimeState);
+                    return runtimeState;
+                });
+                return this;
+            }
+
+
+            private <EVENT> void addAction(BiPredicate<RS, EVENT> condition, STATE toState, BiFunction<RS, EVENT, RS> action) {
                 builder.addTransition(state, eventClass, condition, toState == null ? state : toState, action);
             }
 
-            private <EVENT> void addConsumer(BiPredicate<RS, EVENT> condition, STATE toState, Consumer<RS> consumer) {
+            private <EVENT> void addConsumer(BiPredicate<RS, EVENT> condition, STATE toState, BiConsumer<RS, EVENT> consumer) {
                 builder.addTransitionConsumer(state, eventClass, condition, toState == null ? state : toState, consumer);
             }
         }
@@ -179,7 +176,7 @@ public class StateMachine<STATE, RS> implements StateMachineWriter<STATE, String
                 return this;
             }
 
-            public OnStateBuilder<STATE, RS> action(EventAction<EVENT, RS> action) {
+            public OnStateBuilder<STATE, RS> action(BiFunction<RS, EVENT, RS> action) {
                 onStateBuilder.addAction(condition, toState, action);
                 return onStateBuilder;
             }
@@ -189,7 +186,7 @@ public class StateMachine<STATE, RS> implements StateMachineWriter<STATE, String
                 return onStateBuilder;
             }
 
-            public OnStateBuilder<STATE, RS> consumer(Consumer<RS> consumer) {
+            public OnStateBuilder<STATE, RS> consumer(BiConsumer<RS, EVENT> consumer) {
                 onStateBuilder.addConsumer(condition, toState, consumer);
                 return onStateBuilder;
             }

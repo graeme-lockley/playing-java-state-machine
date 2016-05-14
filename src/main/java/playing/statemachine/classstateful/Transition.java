@@ -2,6 +2,7 @@ package playing.statemachine.classstateful;
 
 import playing.statemachine.StateMachineTransition;
 
+import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
 class Transition<STATE, RS> implements StateMachineTransition<STATE, String> {
@@ -9,9 +10,9 @@ class Transition<STATE, RS> implements StateMachineTransition<STATE, String> {
     private final Class eventClass;
     private final BiPredicate<RS, ?> condition;
     private final STATE toState;
-    final EventAction<?, RS> action;
+    private final BiFunction<RS, ?, RS> action;
 
-    Transition(STATE fromState, Class eventClass, BiPredicate<RS, ?> condition, STATE toState, EventAction<?, RS> action) {
+    Transition(STATE fromState, Class eventClass, BiPredicate<RS, ?> condition, STATE toState, BiFunction<RS, ?, RS> action) {
         this.fromState = fromState;
         this.eventClass = eventClass;
         this.condition = condition;
@@ -30,6 +31,11 @@ class Transition<STATE, RS> implements StateMachineTransition<STATE, String> {
         return false;
     }
 
+    public RS applyAction(RS runtimeState, Object event) {
+        final BiFunction<RS, Object, RS> eventAction = (BiFunction<RS, Object, RS>) action;
+        return eventAction.apply(runtimeState, event);
+    }
+
     @Override
     public STATE fromState() {
         return fromState;
@@ -44,4 +50,5 @@ class Transition<STATE, RS> implements StateMachineTransition<STATE, String> {
     public String event() {
         return eventClass.toString();
     }
+
 }
