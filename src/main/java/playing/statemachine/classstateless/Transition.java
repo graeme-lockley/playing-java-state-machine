@@ -2,6 +2,7 @@ package playing.statemachine.classstateless;
 
 import playing.statemachine.StateMachineTransition;
 
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 class Transition<STATE> implements StateMachineTransition<STATE, String> {
@@ -9,9 +10,9 @@ class Transition<STATE> implements StateMachineTransition<STATE, String> {
     private final Class eventClass;
     private final Predicate<?> condition;
     private final STATE toState;
-    final EventStatelessAction<?> action;
+    private final Consumer<?> action;
 
-    Transition(STATE fromState, Class eventClass, Predicate<?> condition, STATE toState, EventStatelessAction<?> action) {
+    Transition(STATE fromState, Class eventClass, Predicate<?> condition, STATE toState, Consumer<?> action) {
         this.fromState = fromState;
         this.eventClass = eventClass;
         this.condition = condition;
@@ -28,6 +29,11 @@ class Transition<STATE> implements StateMachineTransition<STATE, String> {
             }
         }
         return false;
+    }
+
+    public void acceptAction(Object event) {
+        final Consumer<Object> eventStatelessAction = (Consumer<Object>) action;
+        eventStatelessAction.accept(event);
     }
 
     @Override
