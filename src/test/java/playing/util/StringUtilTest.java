@@ -16,5 +16,7 @@ public class StringUtilTest {
 
         assertEquals("A", StringUtil.prefix("AB", "AA"));
         assertEquals("A", StringUtil.prefix("AA", "AB"));
+
+        assertEquals("ABC", StringUtil.prefix("ABCDEF", "ABCXYZ"));
     }
 }
