@@ -1,4 +1,4 @@
-After the past number of months I have needed to build state machines to solve a number of
+Over the past number of months I have needed to build state machines to solve a number of
 processing problems.  All of the state machines that I created were hand-rolled and all of
 their development followed a similar process:
 
